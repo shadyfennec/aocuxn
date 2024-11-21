@@ -1,0 +1,25 @@
+( file.tal )
+
+( read a file line by line and execute a function for each line )
+( the function is of the form: str* len* -- )	
+@stream-lines ( fn* -- )
+	;&fn STA2 ( store function pointer to variable )
+	#0001 .File/length DEO2 ( set up length of read to 1 byte )
+	&loop
+		;&buf ;&len LDA2 ADD2 .File/read DEO2k POP ( read one character at buf+len )
+		.File/success DEI2 #0000 EQU2 ,&end JCN ( go to end if no more characters to read )
+		LDA #0a NEQ ,&no-eol JCN ( determine if last character read is a newline )
+	&eol
+		;&buf ;&len LDA2 ;&fn LDA2 JSR2 ( call function )
+		#0000 ;&len STA2 ( reset len )
+		,&loop JMP ( go back to loop )
+	&no-eol
+		;&len LDA2 #0001 ADD2 ;&len STA2 ( increment length by one )
+		,&loop JMP ( go back to loop )
+	&end
+	;&buf ;&len LDA2 ;&fn LDA2 JSR2 ( call function )
+	POP2 ( remove buf+len ptr from stack )
+JMP2r
+	&fn $2
+	&buf $40
+	&len $2

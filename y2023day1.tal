@@ -1,0 +1,45 @@
+( y2023day1.tal )
+
+~utils/devices.tal
+
+( zero-page )
+
+|0000
+	@sum $2
+
+( main program )
+		
+|0100 ( -> )
+	;input .File/name DEO2 ( setup file name )
+	;per-line ;stream-lines JSR2 ( perform operation, result is at .sum )
+	.sum LDZ2 ;print-short-to-dec JSR2 ( print result in console )
+BRK
+
+@per-line ( str* len* -- )
+	#0000 EQU2k ROT ROT POP2 ,&return JCN ( return on empty string )
+	#ff ;&first STA ( init first at ff to indicate not found )
+	&loop
+		DUP2 #0000 EQU2 ,&end JCN ( finished going through the line ? )
+		#0001 SUB2 SWP2 ( decrement len by 1, put string ptr at front of stack )
+		LDAk #30 LTH ,&not-digit JCN ( exclude characters below 0 )
+		LDAk #39 GTH ,&not-digit JCN ( exclude characters above 9 )
+		;&first LDA #ff NEQ ,&not-first JCN ( already seen a digit on this line )
+		LDAk #30 SUB ;&first STA ( set first seen digit as current one )
+	&not-first
+		LDAk #30 SUB ;&last STA ( set currently seen digit as last seen )
+	&not-digit
+		INC2 SWP2 ( increment str ptr by 1, put len at front of stack )
+		,&loop JMP ( go again )
+	&end
+	;&first LDA #0a MUL ;&last LDA ADD ( assemble first and last digit into number )
+	#00 SWP .sum LDZ2 ADD2 .sum STZ2 ( add the result to the global sum )
+	&return
+	POP2 POP2 ( cleanup stack )
+JMP2r
+	&first $1
+	&last $1
+	
+@input [ "y2023day1.txt 00 ]
+
+~utils/file.tal
+~utils/print.tal

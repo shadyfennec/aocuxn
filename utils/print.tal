@@ -1,0 +1,35 @@
+( print.tal )
+
+( prints a short, a byte or a char to the console )
+@print ( short* -- )
+	&short ( short* -- ) SWP ,&byte JSR
+	&byte ( byte -- ) DUP #04 SFT ,&char JSR
+	&char ( char -- ) #0f AND DUP #09 GTH #27 MUL ADD #30 ADD #18 DEO
+JMP2r
+
+( prints a short to the console in decimal format )
+@print-short-to-dec ( short* -- )
+	#2710 ( start at 10,000 )
+	&loop
+		LTH2k ,&dec JCN ( current divisor is bigger than number )
+		DIV2k #30 ADD .Console/write DEOk POP #30 SUB ( divide, print remainder )
+		( start with val* div* rem* )
+			MUL2k ( val* div* rem* divrem* )
+			ROT2  ( val* rem* divrem* div* )
+			POP2  ( val* rem* divrem* )
+			ROT2  ( rem* divrem* val* )
+			SWP2  ( rem* val* divrem* )
+			SUB2k ( rem* val* divrem* nval* )
+			ROT2  ( rem* divrem* nval* val* )
+			POP2  ( rem* divrem* nval* )
+			ROT2  ( divrem* nval* rem* )
+			ROT2  ( nval* rem* divrem* )
+			SWP2  ( nval* divrem* rem* )
+			DIV2  ( nval* div* )
+	&dec
+			#000a ( nval* div* 000a )
+			DIV2  ( nval* ndiv* )
+		#0001 NEQ2k ROT ROT POP2 ,&loop JCN ( stop at the units )
+	SWP2 #30 ADD .Console/write DEOk POP ( print the remainder )
+	POP2 POP2 ( cleanup )
+JMP2r
