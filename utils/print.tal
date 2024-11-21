@@ -33,3 +33,20 @@ JMP2r
 	SWP2 #30 ADD .Console/write DEOk POP ( print the remainder )
 	POP2 POP2 ( cleanup )
 JMP2r
+
+@print-str ( str* len* -- )
+	#0000 EQU2k ,&cleanup JCN POP2 ( return early if length is 0 )
+	&loop
+		SWP2 LDAk .Console/write DEO ( print character to string )
+		#0001 ADD2 ( increment string )
+		SWP2 #0001 EQU2k ,&cleanup JCN POP2 ( return if end of string )
+		#0001 SUB2 ( decrement len )
+		,&loop JMP ( go back to loop )
+	&cleanup
+		POP2
+	&return
+		POP2 POP2
+JMP2r
+	&newline
+		,print-str JSR #0a .Console/write DEO ( print newline after string )
+JMP2r

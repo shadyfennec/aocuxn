@@ -2,44 +2,103 @@
 
 ~utils/devices.tal
 
+( macros )
+	
+%NOT { #01 SWP SUB } ( a -- !a )
+%PRINT-PART { ;part-str #0005 ;print-str JSR2 #30 ADD .Console/write DEO #3a .Console/write DEO #20 .Console/write DEO } ( a -- )
+		
 ( zero-page )
 
 |0000
-	@sum $2
-
+	@sum &part1 $2 &part2 $2
+	@first $1
+	@last $1
+	@wordptr $2
+	@wordcnt $1
+	@part $1
+	
 ( main program )
 		
 |0100 ( -> )
 	;input .File/name DEO2 ( setup file name )
-	;per-line ;stream-lines JSR2 ( perform operation, result is at .sum )
-	.sum LDZ2 ;print-short-to-dec JSR2 ( print result in console )
+	;compute-line ;stream-lines JSR2 ( perform operation, result is at .sum )
+
+	#01 PRINT-PART  ( print "Part 1: )
+	.sum/part1 LDZ2 ;print-short-to-dec JSR2 #0a .Console/write DEO ( print result in console )
+	
+	#02 PRINT-PART  ( print "Part 2: )
+	.sum/part2 LDZ2 ;print-short-to-dec JSR2 ( print result in console )
 BRK
 
-@per-line ( str* len* -- )
-	#0000 EQU2k ROT ROT POP2 ,&return JCN ( return on empty string )
-	#ff ;&first STA ( init first at ff to indicate not found )
+@compute-line ( str* len* -- )
+	#0000 EQU2k ROT ROT POP2 ;&return JCN2 ( return on empty string )
+	#01 .part STZ ( part 1 first )
+	SWP2k SWP2 ( duplicate inputs to account for both parts )
+	&start 
+		#ff .first STZ ( init first at ff to indicate not found )
 	&loop
-		DUP2 #0000 EQU2 ,&end JCN ( finished going through the line ? )
-		#0001 SUB2 SWP2 ( decrement len by 1, put string ptr at front of stack )
-		LDAk #30 LTH ,&not-digit JCN ( exclude characters below 0 )
-		LDAk #39 GTH ,&not-digit JCN ( exclude characters above 9 )
-		;&first LDA #ff NEQ ,&not-first JCN ( already seen a digit on this line )
-		LDAk #30 SUB ;&first STA ( set first seen digit as current one )
-	&not-first
-		LDAk #30 SUB ;&last STA ( set currently seen digit as last seen )
-	&not-digit
-		INC2 SWP2 ( increment str ptr by 1, put len at front of stack )
-		,&loop JMP ( go again )
+		DUP2 #0000 EQU2 ;&end JCN2 ( finished going through the line ? )
+		SWP2 ( put string ptr at front of stack )
+
+		.part LDZ #01 EQU ,&check-digits JCN ( don't do words on part 1 )
+		SWP2k ( preserve str and len )
+		#01 .wordcnt STZ ( start with one )
+		;numbers/one ( load string ptr )
+		&check-words
+			LDAk #00 SWP ( get string length, make short )
+			SWP2 .wordptr STZ2k POP #0001 ADD2 SWP2 ( add 1 to word ptr to get string, save size ptr )
+			;str-contains JSR2 NOT ,&check-words-end JCN ( is word contained in current string? )
+			.wordcnt LDZ ,&check-first JMP ( yes: continue as normal )
+			&check-words-end ( no: )
+				.wordcnt LDZ #09 EQU ,&check-digits JCN ( none of the words match, check digits next )
+				.wordcnt LDZ #01 ADD .wordcnt STZ ( increment wordcnt )
+				.wordptr LDZ2 LDAk #01 ADD #00 SWP ADD2 DUP2 .wordptr STZ2 ( set ptr to next word len in array )
+				POP2 SWP2k .wordptr LDZ2 ( reduplicate str and len for next function call )				
+				,&check-words JMP ( start new loop )
+		&check-digits
+			LDAk #30 LTH ,&not-digit JCN ( exclude characters below 0 )
+			LDAk #39 GTH ,&not-digit JCN ( exclude characters above 9 )
+			LDAk #30 SUB
+		&check-first
+			.first LDZ #ff NEQ ,&not-first JCN ( already seen a digit on this line )
+			.first STZk POP ( set first seen digit as current one )
+		&not-first
+			.last STZ ( set currently seen digit as last seen )
+		&not-digit
+			INC2 SWP2 ( increment str ptr by 1, put len at front of stack )
+			#0001 SUB2 ( decrement len by 1 )
+			;&loop JMP2 ( go again )
 	&end
-	;&first LDA #0a MUL ;&last LDA ADD ( assemble first and last digit into number )
-	#00 SWP .sum LDZ2 ADD2 .sum STZ2 ( add the result to the global sum )
+	.first LDZ #0a MUL .last LDZ ADD ( assemble first and last digit into number )
+		
+	.part LDZ #02 EQU ,&part-2-end JCN ( if part 2, sum up and finish, otherwise sum up and do it again )
+		#00 SWP .sum/part1 LDZ2 ADD2 .sum/part1 STZ2 ( add the result to the global sum )
+		POP2 POP2 ( cleanup copies of params )
+		#02 .part STZ ( start part 2 )
+		;&start JMP2 ( do it again )
+	&part-2-end
+		#00 SWP .sum/part2 LDZ2 ADD2 .sum/part2 STZ2 ( add the result to the global sum for part 2 )
 	&return
 	POP2 POP2 ( cleanup stack )
 JMP2r
-	&first $1
-	&last $1
-	
+	&wordptr $2
+	&wordcnt $1
+			
 @input [ "y2023day1.txt 00 ]
 
+@numbers
+	&one [ 03 "one ]
+	&two [ 03 "two ]
+	&three [ 05 "three ]
+	&four [ 04 "four ]
+	&five [ 04 "five ]
+	&six [ 03 "six ]
+	&seven [ 05 "seven ]
+	&eight [ 05 "eight ]
+	&nine [ 04 "nine ]
+
+@part-str [ "Part 20 ]
+	
 ~utils/file.tal
 ~utils/print.tal
+~utils/string.tal

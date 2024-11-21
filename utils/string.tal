@@ -1,0 +1,24 @@
+( string.tal )
+
+@str-contains ( src* srclen* cmp* cmplen* -- res )
+	SWP2 ;&cmp STA2 ( store cmp )
+	LTH2k ,&false-cleanup JCN ( return false if cmp length is greater than src length )
+	;&cmplen STA2 POP2 ;&src STA2 ( store cmplen and src in memory )
+	
+	&loop
+		;&src LDA2 LDA ;&cmp LDA2 LDA NEQ ,&false JCN ( return false if the two strings don't match at that point )
+		;&cmplen LDA2 #0001 EQU2 ,&true JCN ( return true if that was the last character of the query )
+		;&cmplen LDA2 #0001 SUB2 ;&cmplen STA2 ( decrement cmplen )
+		;&cmp LDA2 #0001 ADD2 ;&cmp STA2 ( increment cmp )
+		;&src LDA2 #0001 ADD2 ;&src STA2 ( increment src )
+		,&loop JMP ( new loop )
+	
+	&false-cleanup
+	POP2 POP2 POP2
+	&false
+#00 JMP2r
+	&true
+#01 JMP2r
+	&src $2
+	&cmp $2
+	&cmplen $2
